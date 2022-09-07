@@ -11,7 +11,7 @@ export class Bitmap {
         this.bits = Array.from(bits);
     }
 
-    public reduce(size: Dimension) {
+    public reduce(size: Dimension): Bitmap {
         const bits = Array.from<number>({ length: size.w * size.h });
 
         let pixels: Dimension = {
@@ -35,12 +35,14 @@ export class Bitmap {
                 }
 
                 const index = row * size.w + col;
-                bits[index] = Number(count > 600);
+                bits[index] = Number(count > 400);
             }
         }
 
         this.size = size;
         this.bits = bits;
+
+        return this
     }
 
     public toMatrix() {

@@ -9,14 +9,13 @@ import { Letter } from "./constants/letter";
 const extname = "{jpeg,png,webp,avif,gif,svg,tiff}";
 const neuralNetwork = new NeuralNetwork([[neuron(ActivationFunction.Fr)]]);
 
-async function training(datas: string, output: Output[]) {
-    const dir = path.join(process.cwd(), datas);
-    const files = glob.sync(path.join(dir, "**", `*.${extname}`));
+async function training(input: string, output: Output[]) {
+    const files = glob.sync(path.join(input, "**", `*.${extname}`));
 
     for (const file of files) {
         const bitmap = await Bitmap.fromFile(file, { w: 250, h: 400 });
 
-        bitmap.reduce({ w: 5, h: 8 });
+        bitmap.reduce({ w: 10, h: 16 });
 
         neuralNetwork.training([bitmap.bits, output]);
     }
@@ -25,18 +24,18 @@ async function training(datas: string, output: Output[]) {
 async function main() {
     const data = `${process.cwd()}/data`;
 
-    training(`${data}/letter/A`, [Letter.A]);
-    training(`${data}/letter/B`, [Letter.B]);
+    training(`${data}/B`, [Letter.B]);
+    training(`${data}/A`, [Letter.A]);
 
-    const A = fs.readFileSync(`${data}/test/A.jpg`);
-    const B = fs.readFileSync(`${data}/test/B.png`);
+    const A = fs.readFileSync(`${process.cwd()}/test/A.jpg`);
+    const B = fs.readFileSync(`${process.cwd()}/test/B.jpg`);
 
-    const bitmap = await Bitmap.fromFile(A, {
+    const bitmap = await Bitmap.fromFile(B, {
         w: 250,
         h: 400,
     });
 
-    bitmap.reduce({ w: 5, h: 8 });
+    bitmap.reduce({ w: 10, h: 16 });
 
     const letter = neuralNetwork.predict(bitmap.bits);
 
