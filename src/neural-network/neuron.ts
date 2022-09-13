@@ -1,58 +1,77 @@
-import { Input, Output } from "./neural-network";
-import { weight, Weight } from "./weight";
+import uuid from "./shared/uuid";
+import sigmoid from "./functions/sigmoid";
+import Synapse from "./synapse";
 
-export enum ActivationFunction {
-    Lr,
-    Fr,
-    Fs,
+export enum NeuronType {
+    Input = "input",
+    Hidden = "hidden",
+    Output = "output",
 }
 
-export class Neuron {
-    public readonly weights: Weight[];
+export default class Neuron {
+    public readonly id = uuid();
 
-    constructor(public readonly type: ActivationFunction, weights?: Weight[]) {
-        this.weights = weights ?? [];
+    public activation: number = 0;
+    public func: Function = sigmoid.activate;
+    public bias: number = Math.random() * 0.2 - 0.1;
+
+    public connections: Map<string, Synapse> = new Map();
+
+    constructor() {}
+
+    // Ativa o neurônio, fazendo a soma ponderada dos valores de ativação dos neurônios de entrada.
+    public activate(input?: number): number {
+        // Se o neurônio for do tipo de entrada, ele recebe o valor de ativação diretamente.
+        if (input !== undefined) {
+            this.bias = 0;
+            this.activation = input;
+
+            return this.activation;
+        }
+
+        let sum = 0;
+        for (const synapse of this.connections.values()) {
+            sum += synapse.weight * synapse.from.activation;
+        }
+
+        this.activation = this.func(sum + this.bias);
+
+        return this.activation;
     }
 
-    public activate(inputs: Input[]): Output {
-        return this.activationFunction(this.sum(inputs));
+    // Utilizada para fazer o aprendizado do neurônio.
+    // Para a propagação funcionar corretamente, é necessário que o neurônio seja ativado antes, pois a função de propagação utiliza o valor de ativação do neurônio para calcular.
+    public propagate(rate: number, target: number) {
+        const delta = target - this.activation;
+
+        for (const synapse of this.connections.values()) {
+            synapse.weight += rate * delta * synapse.from.activation;
+        }
+
+        this.bias += rate * delta;
     }
 
-    public hotfix(inputs: Input[], expected: Output) {
-        Array.from(inputs).forEach((input, index) => {
-            const weight = this.weights[index];
+    // A projeção é utilizada para criar uma conexão entre dois neurônios.
+    public project(neuron: Neuron, weight?: number) {
+        const synapse = new Synapse(this, neuron, weight);
 
-            weight.hotfix(input, expected, this.activate(inputs));
-        });
+        neuron.connections.set(synapse.id, synapse);
+
+        return synapse;
     }
 
-    private sum(inputs: Input[]): number {
-        return Array.from(inputs).reduce((value, input, index) => {
-            if (!this.weights[index]) {
-                this.weights.push(weight());
+    // Verifica se o neurônio esta conectado a outro neurônio.
+    public connected(neuron: Neuron) {
+        for (const synapse of this.connections.values()) {
+            if (synapse.from === neuron) {
+                return true;
             }
 
-            return value + input * this.weights[index].value;
-        }, 0);
-    }
-
-    private activationFunction(input: number): number {
-        switch (this.type) {
-            case ActivationFunction.Lr:
-                return input > 0 ? 1 : -1;
-            case ActivationFunction.Fr:
-                return Math.max(Math.min(input, 1), 0);
-            case ActivationFunction.Fs:
-                if (input < 0) {
-                    return -1 + 1 / (1 - input);
-                }
-                return 1 - 1 / (1 + input);
-            default:
-                throw new Error("Não foi encontrado essa função de ativação.");
+            if (synapse.to === neuron) {
+                return true;
+            }
         }
-    }
-}
 
-export function neuron(type: ActivationFunction, weights?: Weight[]) {
-    return new Neuron(type, weights);
+        return false;
+    }
 }
