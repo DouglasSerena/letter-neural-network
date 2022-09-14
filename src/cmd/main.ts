@@ -3,26 +3,27 @@ import { createInterface } from "readline";
 import Layer from "../neural-network/layer";
 import Network from "../neural-network/network";
 
-const trainFromCSV = (network: Network, filename: string, target: number[]) =>
-    new Promise((done) => {
-        const readStream = createReadStream(
-            `${process.cwd()}/data/processed/${filename}.csv`
-        );
-        const readline = createInterface(readStream);
+function readline(file: string, callback: (line: string) => void) {
+    const readStream = createReadStream(file);
+    const readline = createInterface(readStream);
 
-        readline.on("line", (line) => {
-            const inputs = line.split(",").map((x) => parseFloat(x));
-
-            network.activate(inputs);
-            network.propagate(0.3, target);
-        });
-
+    return new Promise((done) => {
+        readline.on("line", callback);
         readline.on("pause", done);
+    });
+}
+
+const trainFromCSV = (network: Network, filename: string, target: number[]) =>
+    readline(`${process.cwd()}/data/processed/${filename}.csv`, (line) => {
+        const inputs = line.split(",").map((x) => parseFloat(x));
+
+        network.activate(inputs);
+        network.propagate(0.3, target);
     });
 
 async function main(args: any[]) {
-    const input = new Layer(5 * 8);
-    const hidden = new Layer(5 * 8 * 2);
+    const input = new Layer(40);
+    const hidden = new Layer(40);
     const output = new Layer(1);
 
     input.project(hidden);
@@ -39,17 +40,19 @@ async function main(args: any[]) {
         await trainFromCSV(network, "train/b", [1]);
     }
 
-    const A = [
-        0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
-        0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0,
-    ];
-    const B = [
-        0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
-        0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
-    ];
+    await readline(`${process.cwd()}/data/processed/test/a.csv`, (line) => {
+        console.log(
+            "A",
+            network.activate(line.split(",").map((x) => parseFloat(x)))
+        );
+    });
 
-    console.log("A", network.activate(A));
-    console.log("B", network.activate(B));
+    await readline(`${process.cwd()}/data/processed/test/b.csv`, (line) => {
+        console.log(
+            "B",
+            network.activate(line.split(",").map((x) => parseFloat(x)))
+        );
+    });
 }
 
 main(process.argv.slice(2));
